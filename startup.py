@@ -73,9 +73,25 @@ try:
 except ImportError:
     print('*** warning: command line completion not available ***')
 else:
-    completer.run()
+    completer.enable()
 
 
+# === Enable and disable comprehensive tracebacks ===
+
+# Set the USE_LARGE_TRACEBACKS global to a true value to use large tracebacks.
+USE_LARGE_TRACEBACKS = False  # Default to standard tracebacks.
+def _set_tb_handler():
+    import cgitb
+    std_handler = sys.excepthook or sys.__excepthook__
+    big_handler = cgitb.Hook(display=1, logdir=None, context=5, format='text')
+    def handler(etype, evalue, etb):
+        if globals().get('USE_LARGE_TRACEBACKS'):
+            return big_handler(etype, evalue, etb)
+        else:
+            return std_handler(etype, evalue, etb)
+    sys.excepthook = handler
+
+_set_tb_handler()
 
 print("=== startup script executed ===")
 
