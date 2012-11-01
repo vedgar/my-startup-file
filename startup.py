@@ -39,6 +39,14 @@ try:
 except NameError:
     from imp import reload
 
+# And cmp.
+try:
+    cmp
+except NameError:
+    def cmp(a, b):
+        """Return negative if x<y, zero if x==y, positive if x>y."""
+        return (b < a) - (a < b)
+
 # Monkey-patch the math module *wicked grin*
 try:
     # Don't touch it if already defined.
@@ -62,9 +70,9 @@ else:
 
 # === Simple benchmarking ===
 try:
-    from timer import Timer as timer
+    from timer import Timer
 except ImportError:
-    print('*** warning: timer not available ***')
+    print('*** warning: Timer not available ***')
 
 
 # === Command line completion and history ===
