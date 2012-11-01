@@ -11,6 +11,12 @@ from __future__ import division
 # Pre-import useful modules.
 import math, os, sys
 
+if sys.version < '3':
+    import __builtin__ as builtins
+else:
+    import builtins
+
+
 # Change the main prompt.
 sys.ps1 = 'py> '
 
