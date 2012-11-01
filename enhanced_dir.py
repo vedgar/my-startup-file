@@ -1,6 +1,6 @@
 """Enhancements to the built-in dir function.
 
-Adds support for globs to dir.
+Adds support for matching globs to dir.
 
 >>> class K: pass
 >>> k = K()
@@ -10,6 +10,12 @@ Adds support for globs to dir.
 >>> globbing_dir(k, 'b*')
 ['ba', 'bb']
 
+If the glob doesn't include any of the metacharacters '*?[', it is treated
+as a substring match:
+
+>>> globbing_dir(k, 'du')
+['__module__']
+
 """
 # Keep this module compatible with Python 2.4 and better.
 
@@ -17,6 +23,18 @@ import sys
 from fnmatch import fnmatchcase
 
 _sentinel = object()
+
+
+try:
+    any
+except NameError:
+    # Python 2.4 compatiblity.
+    def any(items):
+        for item in items:
+            if item:
+                return True
+        return False
+
 
 def globbing_dir(obj=_sentinel, glob=None):
     if obj is _sentinel:
@@ -28,6 +46,10 @@ def globbing_dir(obj=_sentinel, glob=None):
         names = dir(obj)
     if glob is None:
         return names
+    # DWIM when there are no metacharacters in the glob.
+    # There is no canonical list of metachars recognised by fnmatch,
+    # so I just hard-code the ones fnmatch currently use.
+    if not any(metachar in glob for metachar in '*?['):
+        glob = '*' + glob + '*'  # Substring match.
     return [name for name in names if fnmatchcase(name, glob)]
-
 
