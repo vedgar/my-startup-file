@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #=============================================================#
 #          P Y T H O N   S T A R T U P   S C R I P T          #
 #=============================================================#
@@ -11,10 +13,11 @@ from __future__ import division
 # Pre-import useful modules.
 import math, os, sys
 
-if sys.version < '3':
+try:
+    import builtins  # Python 3.x
+except ImportError:
+    # Python 2.x
     import __builtin__ as builtins
-else:
-    import builtins
 
 
 # Change the main prompt.
@@ -58,7 +61,7 @@ try:
     # Don't touch it if already defined.
     math.tau
 except AttributeError:
-    math.tau = 2*math.pi
+    math.tau = 2*math.pi  # τ = 2π
 
 # === Add globbing to dir() ===
 try:
