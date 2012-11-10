@@ -28,12 +28,8 @@ _sentinel = object()
 try:
     any
 except NameError:
-    # Python 2.4 compatiblity.
-    def any(items):
-        for item in items:
-            if item:
-                return True
-        return False
+    # Python 2.4 compatibility.
+    from backports import any
 
 
 def globbing_dir(obj=_sentinel, glob=None):
@@ -48,7 +44,7 @@ def globbing_dir(obj=_sentinel, glob=None):
         return names
     # DWIM when there are no metacharacters in the glob.
     # There is no canonical list of metachars recognised by fnmatch,
-    # so I just hard-code the ones fnmatch currently use.
+    # so I just hard-code the ones fnmatch currently uses.
     if not any(metachar in glob for metachar in '*?['):
         glob = '*' + glob + '*'  # Substring match.
     return [name for name in names if fnmatchcase(name, glob)]
