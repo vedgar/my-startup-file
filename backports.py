@@ -1,14 +1,19 @@
-"""Backported or re-implemented functions from Python 2.5 or better back
-to Python 2.4.
-
+"""Backported or re-implemented functions from Python 2.5+ to 2.4.
 
 """
+
 
 # builtins `all` and `any` were added in Python 2.5.
 def all(iterable):
     """all(iterable) -> bool
 
     Return True if bool(x) is True for all values x in the iterable.
+
+    >>> all([42, 23, 56, 12])
+    True
+    >>> all([42, 23, 56, 0, 12])
+    False
+
     """
     for element in iterable:
         if not element:
@@ -20,6 +25,12 @@ def any(iterable):
     """any(iterable) -> bool
 
     Return True if bool(x) is True for any x in the iterable.
+
+    >>> any([0, False, None, {}])
+    False
+    >>> any([0, False, None, 23, {}])
+    True
+
     """
     for element in iterable:
         if element:
@@ -46,6 +57,8 @@ def wraps(func_to_wrap):
     ... def decorated(x):
     ...     return undecorated(x)
     ...
+    >>> decorated(3)
+    4
     >>> decorated.__doc__
     'This is a doc string.'
     >>> decorated.attr
@@ -72,5 +85,13 @@ def wraps(func_to_wrap):
         return f
     return decorator
 
+
+if __name__ == '__main__':
+    import doctest
+    failures, tests = doctest.testmod()
+    if tests == 0:
+        print("no doctests found")
+    elif failures == 0:
+        print("%d doctests passed." % tests)
 
 
