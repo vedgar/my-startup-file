@@ -53,7 +53,7 @@ try:
     cmp
 except NameError:
     def cmp(a, b):
-        """Return negative if x<y, zero if x==y, positive if x>y."""
+        """Return negative if a<b, zero if a==b, positive if a>b."""
         return (b < a) - (a < b)
 
 # Monkey-patch the math module *wicked grin*
@@ -109,6 +109,7 @@ def _set_tb_handler():
     sys.excepthook = handler
 
 _set_tb_handler()
+
 
 print("=== startup script executed ===")
 
