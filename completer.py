@@ -26,6 +26,10 @@ completion.
 
 # Keep this module compatible with Python 2.4 and better.
 
+
+# TODO: add "operate and go next" functionality like in bash.
+
+
 try:
     # Everything depends on readline.
     import readline
@@ -96,21 +100,20 @@ class Completer(rlcompleter.Completer):
         readline library. If key is None, it defaults to the TAB key, 'tab'
         when using libreadline and '^I' when using libedit, and will also
         indent at the start of a line. Otherwise the key is used exactly as
-        given, and there is no special behaviour at the start of the line.
+        given, there is no special behaviour at the start of the line, and
+        pressing the TAB key will insert a tab.
         """
         if key is None:
             completer = self.tab_complete
         else:
-            ns = getattr(self, 'namespace')
+            # Remove the previous completer installed by rlcompleter.
+            readline.set_completer(None)
+            ns = getattr(self, 'namespace', None)
             completer = rlcompleter.Completer(ns).complete
         if self.using_libedit():
-            if key is None:
-                key = '^I'
-            cmd = 'bind %s rl_complete' % key
+            cmd = 'bind %s rl_complete' % (key or '^I')
         else:
-            if key is None:
-                key = 'tab'
-            cmd = '%s: complete' % key
+            cmd = '%s: complete' % (key or 'tab')
         readline.parse_and_bind(cmd)
         readline.set_completer(completer)
 
@@ -135,7 +138,6 @@ class Completer(rlcompleter.Completer):
         Binds:
 
             Ctrl-X o  =>  overwrite mode
-            Ctrl-X q  =>  quote the previous or current word
             Ctrl-X d  =>  dump current bindings to the screen
             Ctrl-X i  =>  a surprising easter-egg
 
@@ -148,7 +150,6 @@ class Completer(rlcompleter.Completer):
             s = s.decode('hex')
         readline.parse_and_bind(r'"\C-xi": "%s"' % s)
         readline.parse_and_bind(r'"\C-xo": overwrite-mode')
-        readline.parse_and_bind(r'"\C-xq": "\eb\"\ef\""')  # FIXME
         readline.parse_and_bind(r'"\C-xd": dump-functions')
 
     def enable_history(self, history_file, history_length):
