@@ -1,5 +1,11 @@
+try:
+    # Everything depends on readline.
+    import readline
+except ImportError:
+    # May be Windows, so try using a substitute.
+    import pyreadline as readline
+
 import atexit
-import readline
 import os
 
 
