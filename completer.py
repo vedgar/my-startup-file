@@ -56,6 +56,7 @@ class Completer(rlcompleter.Completer):
         if isinstance(bindings, str):
             bindings = (bindings,)
         self.bindings = bindings
+        self._enable()
 
     def tab_complete(self, text, state):
         """Tab completion with support for indenting.
