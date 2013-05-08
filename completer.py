@@ -42,21 +42,20 @@ import rlcompleter
 # Set up command line completion:
 class Completer(rlcompleter.Completer):
     """Readline tab completer with support for indenting.
-
-    Call the ``instance.enable()`` method to activate.
     """
     def __init__(self, namespace=None,
                 # Tab completion:
-                complete_key=None, indent='\t', completer_query_items=30,
-                # Extra bindings:
-                enable_extras=True,
+                complete_key=None, indent='\t', query_items=30,
+                bindings=(),
                 ):
         # This is a classic class in Python 2.x, so no super().
         rlcompleter.Completer.__init__(self, namespace)
         self.complete_key = complete_key
         self.indent = indent
-        self.completer_query_items = completer_query_items
-        self.enable_extras = enable_extras
+        self.query_items = query_items
+        if isinstance(bindings, str):
+            bindings = (bindings,)
+        self.bindings = bindings
 
     def tab_complete(self, text, state):
         """Tab completion with support for indenting.
@@ -104,38 +103,15 @@ class Completer(rlcompleter.Completer):
         # sys.platform == DARWIN?
         return 'libedit' in readline.__doc__
 
-    def set_query_items(self, items):
-        readline.parse_and_bind("set completion-query-items %d" % items)
-
-    def bind_extras(self):
-        """Set up a few assorted extra readline bindings.
-
-        This is a fairly arbitrary set of useful things and is a bit of a
-        hodge-podge, and may not work correctly on libedit-based systems.
-
-        Binds:
-
-            Ctrl-X o  =>  overwrite mode
-            Ctrl-X d  =>  dump current bindings to the screen
-            Ctrl-X i  =>  a surprising easter-egg
-
-        """
+    def _enable(self):
+        """Set tab completion."""
+        self.bind_completer(self.complete_key)
+        readline.parse_and_bind(
+            "set completion-query-items %d" % self.query_items)
         s = ('\x4e\x4f\x42\x4f\x44\x59\x20\x65\x78\x70\x65\x63\x74'
              '\x73\x20\x74\x68\x65\x20\x53\x70\x61\x6e\x69\x73\x68'
              '\x20\x49\x6e\x71\x75\x69\x73\x69\x74\x69\x6f\x6e\x21')
         readline.parse_and_bind(r'"\C-xi": "%s"' % s)
-        readline.parse_and_bind(r'"\C-xo": overwrite-mode')
-        readline.parse_and_bind(r'"\C-xd": dump-functions')
-
-    def enable(self):
-        """Set tab completion."""
-        self.bind_completer(self.complete_key)
-        self.set_query_items(self.completer_query_items)
-        if self.enable_extras:
-            self.bind_extras()
-
-
-
-# Create a new completer object, but don't enable completion yet.
-completer = Completer()
+        for binding in self.bindings:
+            readline.parse_and_bind(binding)
 

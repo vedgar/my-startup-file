@@ -86,20 +86,22 @@ except ImportError:
 
 # === Command line completion and history ===
 try:
-    from history import History
+    import history
 except ImportError:
     print('*** warning: command line history not available ***')
 else:
-    history = History()
-    del History
-    history.enable()
+    history = history.History()
 
 try:
-    from completer import completer
+    import completer
 except ImportError:
     print('*** warning: command line completion not available ***')
 else:
-    completer.enable()
+    completer = completer.Completer(
+                    bindings=(r'"\C-xo": overwrite-mode',
+                              r'"\C-xd": dump-functions',
+                              )
+                            )
 
 
 # === Enable and disable comprehensive tracebacks ===

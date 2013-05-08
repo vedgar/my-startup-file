@@ -44,26 +44,12 @@ class History(object):
         if history_length is None:
             history_length = self.DEFAULT_HISTORY_LENGTH
         self.history_length = history_length
-
-    def enable(self, filename=None, length=None):
-        """Enable writing of command line history and read the history
-        file into the history buffer.
-
-        If ``filename`` is given, history is read from it, and on exit,
-        history will be written back to it. If it is not given, the
-        instance attribute ``history_file`` is used as the default.
-
-        If ``length`` is given, the history will be limited to that
-        many lines when writing back to the file. Use a negative number
-        for unlimited lines. If it is not given, the instance attribute
-        ``history_length`` is used as the default.
-        """
-        if filename is None:
-            filename = self.history_file
-        if length is None:
-            length = self.history_length
+        self._enable()
+        
+    def _enable(self):
+        filename = self.history_file
         self.read_history(filename)
-        readline.set_history_length(length)
+        readline.set_history_length(self.history_length)
         # Save the history file when exiting.
         atexit.register(readline.write_history_file, filename)
 
