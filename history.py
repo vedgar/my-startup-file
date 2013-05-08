@@ -56,10 +56,10 @@ class History(object):
             filename = self.history_file
         if length is None:
             length = self.history_length
-        self.read_history(history_file)
-        readline.set_history_length(history_length)
+        self.read_history(filename)
+        readline.set_history_length(length)
         # Save the history file when exiting.
-        atexit.register(readline.write_history_file, history_file)
+        atexit.register(readline.write_history_file, filename)
 
     def read_history(self, filename=None):
         """Read history from the named file (if possible).
