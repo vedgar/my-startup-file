@@ -1,4 +1,4 @@
-"""Command line completion and history.
+"""Command line completion.
 
 Install a readline completer with the following features:
 
@@ -7,7 +7,6 @@ Install a readline completer with the following features:
 * When TAB is used for completion, pressing TAB at the start of the
   line will indent as normal.
 * Choice of indenting with tabs or spaces (default is tabs).
-* Enable command line history (by default, 500 lines of history).
 * Enable a few other useful readline bindings.
 
 This relies on the readline and rlcompleter modules. Under Windows, readline
@@ -37,36 +36,18 @@ except ImportError:
     # May be Windows, so try using a substitute.
     import pyreadline as readline
 
-import atexit
-import binascii
-import os
 import rlcompleter
-import sys
 
-# Default location of the history file.
-# FIXME support XDG base directory specification.
-# http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
-DEFAULT_HISTFILE = "~/.pyhist"
 
-# Set up command line completion and history:
+# Set up command line completion:
 class Completer(rlcompleter.Completer):
-    """Readline tab completer with support for indenting and history.
+    """Readline tab completer with support for indenting.
 
     Call the ``instance.enable()`` method to activate.
-
-    Use ``instance.read_history(filename)`` to read the command line
-    history from the optionally given file. If no filename is given,
-    defaults to ``instance.history_file``.
-
-    Use ``instance.save_history(filename)`` to save the current state of
-    the command line history to the optionally given file. If no filename is
-    given, defaults to ``instance.history_file``.
     """
     def __init__(self, namespace=None,
                 # Tab completion:
                 complete_key=None, indent='\t', completer_query_items=30,
-                # Command-line history:
-                history_file=None, history_length=500,
                 # Extra bindings:
                 enable_extras=True,
                 ):
@@ -75,11 +56,6 @@ class Completer(rlcompleter.Completer):
         self.complete_key = complete_key
         self.indent = indent
         self.completer_query_items = completer_query_items
-        if history_file is None:
-            history_file = DEFAULT_HISTFILE
-        history_file = os.path.expanduser(history_file)
-        self.history_file = history_file
-        self.history_length = history_length
         self.enable_extras = enable_extras
 
     def tab_complete(self, text, state):
@@ -88,6 +64,7 @@ class Completer(rlcompleter.Completer):
         At the start of a line, insert an indent. Otherwise perform a
         tab completion.
         """
+        # TODO: Add filename completion.
         if text == '' or text.isspace():
             readline.insert_text(self.indent)
             return None
@@ -121,6 +98,7 @@ class Completer(rlcompleter.Completer):
         """Return True if the underlying readline library is libedit."""
         # This tests for the libedit library instead of libreadline, which
         # may indicate OS-X or *BSD - See http://bugs.python.org/issue10666
+        #
         # FIXME This is the canonical test as suggested by the docs, but
         # surely there is a better test than this? Perhaps something like
         # sys.platform == DARWIN?
@@ -142,56 +120,19 @@ class Completer(rlcompleter.Completer):
             Ctrl-X i  =>  a surprising easter-egg
 
         """
-        s = ('4e4f424f4459206578706563747320746865205'
-             '370616e69736820496e717569736974696f6e21')
-        if sys.version >= '3':
-            s = binascii.unhexlify(bytes(s, 'ascii')).decode('ascii')
-        else:
-            s = s.decode('hex')
+        s = ('\x4e\x4f\x42\x4f\x44\x59\x20\x65\x78\x70\x65\x63\x74'
+             '\x73\x20\x74\x68\x65\x20\x53\x70\x61\x6e\x69\x73\x68'
+             '\x20\x49\x6e\x71\x75\x69\x73\x69\x74\x69\x6f\x6e\x21')
         readline.parse_and_bind(r'"\C-xi": "%s"' % s)
         readline.parse_and_bind(r'"\C-xo": overwrite-mode')
         readline.parse_and_bind(r'"\C-xd": dump-functions')
 
-    def enable_history(self, history_file, history_length):
-        """Enable command line history."""
-        self.read_history(history_file)
-        readline.set_history_length(history_length)
-        # Save the history file when exiting.
-        atexit.register(readline.write_history_file, history_file)
-
-    def save_history(self, filename=None):
-        """Save command line history to the given history file right now.
-
-        If filename is None or not given, use the ``history_file`` instance
-        attribute.
-        """
-        if filename is None:
-            filename = self.history_file
-        if filename:
-            readline.write_history_file(filename)
-
-    def read_history(self, filename=None):
-        """Read history from the named file (if possible).
-
-        If filename is None or not given, use the ``history_file`` instance
-        attribute.
-        """
-        if filename is None:
-            filename = self.history_file
-        if filename:
-            try:
-                readline.read_history_file(filename)
-            except (IOError, OSError):
-                pass
-
     def enable(self):
-        """Set tab completion and command line history."""
+        """Set tab completion."""
         self.bind_completer(self.complete_key)
         self.set_query_items(self.completer_query_items)
         if self.enable_extras:
             self.bind_extras()
-        if self.history_file:
-            self.enable_history(self.history_file, self.history_length)
 
 
 

@@ -86,6 +86,15 @@ except ImportError:
 
 # === Command line completion and history ===
 try:
+    from history import History
+except ImportError:
+    print('*** warning: command line history not available ***')
+else:
+    history = History()
+    del History
+    history.enable()
+
+try:
     from completer import completer
 except ImportError:
     print('*** warning: command line completion not available ***')
