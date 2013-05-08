@@ -130,7 +130,7 @@ class History(object):
         if count < 0:
             start = 1
         else:
-            start = end - count + 1
+            start = max(end - count + 1, 1)
         nums = range(start, end+1)
         lines = self.get_history_lines(start, end)            
         if show_line_numbers:
