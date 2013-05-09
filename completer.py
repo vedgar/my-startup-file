@@ -66,8 +66,7 @@ class Completer(rlcompleter.Completer):
         """
         # TODO: Add filename completion.
         if text == '' or text.isspace():
-            readline.insert_text(self.indent)
-            return None
+            return [self.indent, None][state]
         return rlcompleter.Completer.complete(self, text, state)
 
     def bind_completer(self, key=None):
