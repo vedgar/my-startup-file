@@ -124,11 +124,12 @@ class History(object):
         else:
             start = max(end - count + 1, 1)
         nums = range(start, end+1)
-        lines = self.get_history_lines(start, end)            
+        lines = self.get_history_lines(start, end)
         if show_line_numbers:
-            template = "{lineno:3d}:  {line}"
+            # Can't use {} formatting as we have to support 2.4 and 2.5.
+            template = "%(lineno)3d:  %(line)s"
         else:
-            template = "{line}"
+            template = "%(line)s"
         for i, line in zip(nums, lines):
-            print(template.format(lineno=i, line=line))
+            print(template % {'lineno':i, 'line':line})
 
