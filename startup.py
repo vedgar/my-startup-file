@@ -79,7 +79,7 @@ else:
 
 # === Simple benchmarking ===
 try:
-    from timer import Timer
+    from timer import Stopwatch
 except ImportError:
     print('*** warning: Timer not available ***')
 
