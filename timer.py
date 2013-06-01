@@ -13,17 +13,24 @@ class Stopwatch:
 
     The Stopwatch class takes four optional arguments:
 
-    timer       Timer function; by default, the default timer from the
-                timeit module is used.
-    allow_gc    If true (the default), the garbage collector is free to
-                operate while the code block is running, otherwise, the
-                garbage collector is temporarily disabled.
-    verbose     If a true value (the default), the timer result is
-                reported after the code block completes, and a warning
-                displayed if the elapsed time is too small.
-    cutoff      If None, elapsed time warnings are disabled; otherwise,
-                the amount of time in seconds below which a warning is
-                displayed. Defaults to 0.001.
+    timer::
+        Timer function; by default, the default timer from the
+        timeit module is used.
+
+    allow_gc::
+        If true (the default), the garbage collector is free to
+        operate while the code block is running, otherwise, the
+        garbage collector is temporarily disabled.
+
+    verbose::
+        If a true value (the default), the timer result is
+        reported after the code block completes, and a warning
+        displayed if the elapsed time is too small.
+
+    cutoff::
+        If None, elapsed time warnings are disabled; otherwise,
+        the amount of time in seconds below which a warning is
+        displayed. Defaults to 0.001.
 
     For non-interactive use, you can retrieve the time taken using the
     ``interval`` attribute:
