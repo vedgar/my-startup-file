@@ -81,7 +81,7 @@ else:
 try:
     from timer import Stopwatch
 except ImportError:
-    print('*** warning: Timer not available ***')
+    print('*** warning: Stopwatch not available ***')
 
 
 # === Command line completion and history ===
