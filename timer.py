@@ -1,9 +1,7 @@
 import gc
 
 class Stopwatch:
-    """Time long-running pieces of code.
-
-    Time hefty or long-running block of code:
+    """Time hefty or long-running block of code using a ``with`` statement:
 
     >>> with Stopwatch():  #doctest: +SKIP
     ...     do_this()
