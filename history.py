@@ -1,3 +1,43 @@
+"""Enable and control command-line history.
+
+This module relies on the ``readline`` module. When ``readline`` is not
+available, e.g. under Windows, it may work using the third-party
+``pyreadline`` module (untested).
+
+Any text file can be used as a history file, each line in the file is
+considered one history command.
+
+Creating a ``History`` instance enables command-line history, reads in any
+contents of the history file, and prepares to write history back to that
+file when Python exits. Calling ``History()`` with no arguments uses the
+default history file:
+
+>>> history = History()  #doctest: +SKIP
+
+
+See the ``History`` class for details on the arguments accepted.
+
+You can display the last few commands by calling the instance:
+
+>>> history(4)  #doctest: +SKIP
+119: x = spam(23) + eggs(42)
+120: do_this()
+121: do_that()
+122: do_something_else()
+
+
+You can read lines from a history file at any time. The ``read_history``
+method keeps any existing lines in the current history buffer; the
+``load_history`` method replaces the current buffer.
+
+You can write the current history buffer to a file at any time by calling
+the ``write_history`` method. The number of lines written is controlled
+by the readline ``set_history_length`` function.
+"""
+
+# Keep this module compatible with Python 2.4 and better.
+
+
 try:
     # Everything depends on readline.
     import readline
@@ -10,25 +50,19 @@ import os
 
 
 class History(object):
-    """Enable and control command line history.
+    """Enable and control command-line history.
 
-    Some examples of usage:
+    Arguments:
 
-    - Create a History object with a default history file:
+    history_file::
+        Name of the history file to use. If not given, the attribute
+        DEFAULT_HISTORY_FILE (defaults to '.python_history' in the
+        user's home directory) is used.
 
-    >>> history = History()
-
-    - Read any saved history lines, and write history lines back again
-    on exiting:
-
-    >>> history.enable()
-
-    - Display the last few history lines, with line numbers:
-
-    >>> history(3)
-    120: do_this()
-    121: do_that()
-    122: do_something_else()
+    history_length::
+        The maximum number of lines which will be saved to the history
+        file. If not given, the attribute DEFAULT_HISTORY_LENGTH
+        (defaults to 500) is used.
 
     """
 
@@ -60,13 +94,12 @@ class History(object):
         instance attribute.
 
         History lines read are appended to the current history buffer.
-        To replace the current buffer, use the ``load_history`` method
-        instead.
+        To replace the current buffer, use the ``load_history`` method.
         """
         if filename is None:
             filename = self.history_file
         try:
-            readline.read_history_file(filename)
+            readline.read_history_file(os.path.expanduser(filename))
         except (IOError, OSError):
             pass
 
@@ -76,14 +109,13 @@ class History(object):
 
         If filename is None or not given, use the ``history_file``
         instance attribute.
+
+        To read history lines without overwriting the current buffer,
+        use the ``read_history`` method.
         """
-        self.clear()
+        readline.clear_history()
         self.read_history(filename)
 
-    def clear(self):
-        """Clear the current history buffer."""
-        readline.clear_history()
-        
     def write_history(self, filename=None):
         """Write command line history to the named file without waiting
         for program exit.
@@ -93,7 +125,7 @@ class History(object):
         """
         if filename is None:
             filename = self.history_file
-        readline.write_history_file(filename)
+        readline.write_history_file(os.path.expanduser(filename))
 
     def get_history_lines(self, start=1, end=None):
         """Yield history lines between ``start`` and ``end`` inclusive.
@@ -102,9 +134,9 @@ class History(object):
         from 1. If not given, ``start`` defaults to 1, and ``end``
         defaults to the current history length.
         """
+        get = readline.get_history_item
         if end is None:
             end = readline.get_current_history_length()
-        get = readline.get_history_item
         return (get(i) for i in range(start, end+1))
         
     def __call__(self, count=None, show_line_numbers=True):
@@ -114,7 +146,8 @@ class History(object):
         is shown, given by the attribute MAX_LINES_TO_SHOW. Use a
         negative count to show unlimited lines.
 
-        By default, line numbers are shown.
+        If ``show_line_numbers`` is true (the default), each history
+        line is preceeded by the line number.
         """
         if count is None:
             count = self.MAX_LINES_TO_SHOW

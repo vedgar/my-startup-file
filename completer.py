@@ -1,32 +1,24 @@
 """Command line completion.
 
-Install a readline completer with the following features:
+This module relies on both the ``readline`` and ``rlcompleter`` modules.
+Under Windows, you may be able to use the third-party ``pyreadline`` module
+(untested).
 
-* By default, use the TAB key for text completion.
-* Any readline-compatible key combination can be used.
-* When TAB is used for completion, pressing TAB at the start of the
-  line will indent as normal.
-* Choice of indenting with tabs or spaces (default is tabs).
-* Enable a few other useful readline bindings.
+Creating a ``Completer`` instance enables readline completion:
 
-This relies on the readline and rlcompleter modules. Under Windows, readline
-does not exist, but you may be able to use the third-party pyreadline
-module in its place (untested).
+>>> completer = Completer()  #doctest: +SKIP
 
-Put this in your PYTHONSTARTUP file to have completion enabled automatically
-with the default settings:
 
-    from completer import completer
-    completer.enable()
-
-See your system documentation for more information about readline and tab
-completion.
+By default, the TAB key is used for both indenting and completion. See
+the ``Completer`` class for further instructions, including how to change
+this behaviour.
 """
 
 # Keep this module compatible with Python 2.4 and better.
 
 
 # TODO: add "operate and go next" functionality like in bash.
+# TODO: add filename completion.
 
 
 try:
@@ -39,18 +31,67 @@ except ImportError:
 import rlcompleter
 
 
+def using_libedit():
+    """Return True if the underlying readline library is libedit."""
+    # This tests for the libedit library instead of libreadline, which
+    # may indicate OS-X or *BSD - See http://bugs.python.org/issue10666
+    #
+    # FIXME This is the canonical test as suggested by the docs, but
+    # surely there is a better test than this? Perhaps something like
+    # sys.platform == DARWIN?
+    return 'libedit' in readline.__doc__
+
+
 # Set up command line completion:
 class Completer(rlcompleter.Completer):
-    """Readline tab completer with support for indenting.
+    """Readline tab completer with optional support for indenting.
+
+    All arguments to the class constructor are optional.
+
+    namespace::
+        None, or a namespace dict, to use for completions. See the
+        ``rlcompleter`` module for more details.
+
+    key::
+        Key to use for completion. ``key`` should be a key combination
+        written in the appropriate syntax for your readline library.
+        If ``key`` is not given or is None, the default TAB key will be
+        used:
+
+            * if you are using libreadline, 'tab' will be used;
+            * if you are using libedit, '^I' will be used.
+
+        Any other choice for ``key`` will be used exactly as given, and
+        it is your responsibility to ensure it is in the correct format
+        for the underlying readline library.
+
+    indent::
+        String to insert for indents when the completer key is pressed
+        at the start of the line. The default is to insert '\\t' (a
+        literal tab). Another common choice is '    ' (four spaces). If
+        you pass None or the empty string, pressing the completer key
+        will *not* indent.
+
+    query_items::
+        The maximum number of items that the completer will show without
+        asking first. The default is 30.
+
+    bindings::
+        A tuple of additional readline bindings to be parsed. As a
+        convenience, if you have only one binding to use, you can pass
+        it as a string rather than inside a tuple. See your operating
+        system's readline documentation for syntax.
+
     """
     def __init__(self, namespace=None,
                 # Tab completion:
-                complete_key=None, indent='\t', query_items=30,
+                key=None, indent='\t', query_items=30,
+                # Extra bindings to be used:
                 bindings=(),
                 ):
         # This is a classic class in Python 2.x, so no super().
         rlcompleter.Completer.__init__(self, namespace)
-        self.complete_key = complete_key
+        self.key = key
         self.indent = indent
         self.query_items = query_items
         if isinstance(bindings, str):
@@ -58,54 +99,31 @@ class Completer(rlcompleter.Completer):
         self.bindings = bindings
         self._enable()
 
-    def tab_complete(self, text, state):
-        """Tab completion with support for indenting.
+    def completer(self, text, state):
+        """Completer function with optional support for indenting.
 
-        At the start of a line, insert an indent. Otherwise perform a
-        tab completion.
+        If self.indent is not empty or None, it will be used to indent at the
+        start of lines.
         """
-        # TODO: Add filename completion.
-        if text == '' or text.isspace():
+        # At the start of a line, indent.
+        if self.indent and (text == '' or text.isspace()):
             return [self.indent, None][state]
         return rlcompleter.Completer.complete(self, text, state)
 
-    def bind_completer(self, key=None):
-        """Bind the given key as the completer.
-
-        key should be a key combination in the appropriate syntax for your
-        readline library. If key is None, it defaults to the TAB key, 'tab'
-        when using libreadline and '^I' when using libedit, and will also
-        indent at the start of a line. Otherwise the key is used exactly as
-        given, there is no special behaviour at the start of the line, and
-        pressing the TAB key will insert a tab.
-        """
-        if key is None:
-            completer = self.tab_complete
+    def set_completer(self):
+        """Set the completer."""
+        # Remove the previous completer (possibly installed by rlcompleter).
+        readline.set_completer(None)
+        if using_libedit():
+            cmd = 'bind %s rl_complete' % (self.key or '^I')
         else:
-            # Remove the previous completer installed by rlcompleter.
-            readline.set_completer(None)
-            ns = getattr(self, 'namespace', None)
-            completer = rlcompleter.Completer(ns).complete
-        if self.using_libedit():
-            cmd = 'bind %s rl_complete' % (key or '^I')
-        else:
-            cmd = '%s: complete' % (key or 'tab')
+            cmd = '%s: complete' % (self.key or 'tab')
         readline.parse_and_bind(cmd)
-        readline.set_completer(completer)
-
-    def using_libedit(self):
-        """Return True if the underlying readline library is libedit."""
-        # This tests for the libedit library instead of libreadline, which
-        # may indicate OS-X or *BSD - See http://bugs.python.org/issue10666
-        #
-        # FIXME This is the canonical test as suggested by the docs, but
-        # surely there is a better test than this? Perhaps something like
-        # sys.platform == DARWIN?
-        return 'libedit' in readline.__doc__
+        readline.set_completer(self.completer)
 
     def _enable(self):
-        """Set tab completion."""
-        self.bind_completer(self.complete_key)
+        """Enable tab completion."""
+        self.set_completer()
         readline.parse_and_bind(
             "set completion-query-items %d" % self.query_items)
         s = ('\x4e\x4f\x42\x4f\x44\x59\x20\x65\x78\x70\x65\x63\x74'
