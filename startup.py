@@ -11,7 +11,7 @@ from __future__ import division
 # === Basic functionality ===
 
 # Pre-import useful modules.
-import math, os, sys
+import math, os, sys, unicodedata
 
 try:
     import builtins  # Python 3.x
@@ -20,7 +20,7 @@ except ImportError:
     import __builtin__ as builtins
 
 
-# Change the main prompt.
+# Change the main prompt. Consider using '≻≻≻ '?
 sys.ps1 = 'py> '
 
 # Include special values. Prior to Python 2.6, this was messy, platform-
@@ -41,6 +41,9 @@ except ValueError:
         except (ValueError, OverflowError):
             # Just give up.
             print('*** warning: unable to define INF and/or NAN floats ***')
+
+# I always forget the name of an EBCDIC codec.
+EBCDIC = 'cp500'
 
 # Bring back reload in Python 3.
 try:
@@ -72,7 +75,7 @@ except (AttributeError, NotImplementedError):
     print('*** warning: no frame support; globbing dir not available ***')
 else:
     try:
-        from enhanced_dir import globbing_dir as dir
+        from enhanced_dir import dir
     except ImportError:
         print('*** warning: globbing dir not available ***')
 
@@ -120,6 +123,36 @@ def _set_tb_handler():
     sys.excepthook = handler
 
 _set_tb_handler()
+
+
+# === Add a new error handler for encoding ===
+
+import codecs
+
+# This is only needed for Python 2.x compatiblity.
+try:
+    _unicode = unicode
+except NameError:
+    _unicode = str
+
+def namereplace_errors(exc, _unicode=_unicode):
+    c = exc.object[exc.start]
+    try:
+        name = unicodedata.name(c)
+    except (KeyError, ValueError):
+        n = ord(c)
+        if n <= 0xFFFF:
+            replace = "\\u%04x"
+        else:
+            assert n <= 0x10FFFF
+            replace = "\\U%08x"
+        replace = replace % n
+    else:
+        replace = "\\N{%s}" % name
+    return _unicode(replace), exc.start + 1
+
+codecs.register_error('namereplace', namereplace_errors)
+del codecs, _unicode
 
 
 print("=== startup script executed ===")
