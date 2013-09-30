@@ -1,9 +1,13 @@
 """Backported or re-implemented functions from Python 2.5+ to 2.4.
 
 """
+import sys
+
+# Fix me: Make this a package?
+from nt import namedtuple
 
 
-# builtins `all` and `any` were added in Python 2.5.
+# Built-ins `all` and `any` were added in Python 2.5.
 def all(iterable):
     """all(iterable) -> bool
 
@@ -39,7 +43,7 @@ def any(iterable):
 
 
 
-# `functools.wraps` was added in Python 2.5.
+# functools.wraps was added in Python 2.5.
 def wraps(func_to_wrap):
     """Return a decorator that wraps its argument.
 
@@ -86,6 +90,130 @@ def wraps(func_to_wrap):
     return decorator
 
 
+# sys.getsizeof added in Python 2.6.
+def getsizeof(obj, default=None):
+    """Memory taken by some Python objects.
+
+    This is only valid for the 32-bit implementation of CPython 2.x, and
+    should be considered approximate. Supports only a few built-ins:
+
+        - int, list, tuple, dict, str/bytes, unicode/str
+
+    For other objects, if they have a __getsizeof__ method, that will be
+    called and the result returned; otherwise if default is not None that
+    will be returned. Otherwise, TypeError is raised.
+
+    Excludes the space used by items in containers; does not take into
+    account overhead of memory allocation from the operating system, or
+    over-allocation by lists and dicts.
+    """
+    T = type(obj)
+    if sys.version.startswith('2'):
+        byte_type = str
+        text_type = unicode
+    else:
+        byte_type = bytes
+        text_type = str
+    if T is int:
+        kind = "fixed"
+        container = False
+        size = 4
+    elif T is list or T is tuple:
+        kind = "variable"
+        container = True
+        size = 4*len(obj)
+    elif T is dict:
+        kind = "variable"
+        container = True
+        size = 144
+        if len(obj) > 8:
+            size += 12*(len(obj)-8)
+    elif T is byte_type:
+        kind = "variable"
+        container = False
+        size = len(obj) + 1
+    elif T is text_type:
+        kind = "variable"
+        container = False
+        bytes_per_char = _get_bytes_per_char(obj)
+        size = bytes_per_char*(len(obj) + 1)
+    else:
+        try:
+            # FIXME The real sys.getsizeof implementation adds some
+            # garbage collector overhead to this.
+            return type(obj).__getsizeof__()
+        except AttributeError:
+            if default is not None:
+                return default
+            raise TypeError("don't know about '%s' objects" % T.__name__)
+    assert kind in ("fixed", "variable")
+    if kind == "fixed":
+        overhead = 8
+    else:
+        overhead = 12
+    if container:
+        garbage_collector = 8
+    else:
+        garbage_collector = 0
+    malloc = 8  # In most cases.
+    size += overhead + garbage_collector + malloc
+    # Round up to the nearest multiple of 8 bytes.
+    if size % 8:
+        size = (size//8 + 1)*8
+    # otherwise size is already a multiple of 8 bytes.
+    assert size % 8 == 0
+    return size
+
+
+def _get_bytes_per_char(obj):
+    # Helper function determining the number of bytes per character in
+    # text (Unicode) strings.
+    if sys.version >= '3.3':
+        # Flexible text representation.
+        maxchr = ord(max(c for c in obj))
+        if maxchr < 0xFF:
+            return 1
+        elif maxchr <= 0xFFFF:
+            return 2
+        else:
+            assert maxchr <= 0x10FFFF
+            return 4
+    elif sys.maxunicode == 0xFFFF:
+        return 2  # Narrow build.
+    else:
+        assert sys.maxunicode == 0x10FFFF
+        return 4  # Wide build.
+
+
+# int.bit_length added in Python 2.7.
+def bit_length(n):
+    """Return the number of bits needed to represent int n in binary.
+
+    >>> bit_length(37)
+    6
+
+    If n is zero, returns 0:
+
+    >>> bit_length(n)
+    0
+
+    """
+    if not isinstance(n, (int, long)):
+        raise TypeError('expected an int')
+    if n == 0:
+        return 0
+    elif n < 0:
+        n = -n
+    assert n >= 1
+    bits = 0
+    while n > 2**64:
+        bits += 64; n >>= 64
+    while n:
+        bits += 1; n >>= 1
+    return bits
+
+
+
 if __name__ == '__main__':
     import doctest
     failures, tests = doctest.testmod()
@@ -93,5 +221,4 @@ if __name__ == '__main__':
         print("no doctests found")
     elif failures == 0:
         print("%d doctests passed." % tests)
-
 
