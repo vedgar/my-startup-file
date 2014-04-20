@@ -43,6 +43,7 @@ except ValueError:
             print('*** warning: unable to define INF and/or NAN floats ***')
 
 # I always forget the name of an EBCDIC codec.
+# This is an aide-mémoire more than anything else.
 EBCDIC = 'cp500'
 
 # Bring back reload in Python 3.
@@ -66,18 +67,18 @@ try:
 except AttributeError:
     math.tau = 2*math.pi  # τ = 2π
 
-# === Add globbing to dir() ===
+# === Add enhancements to dir() ===
 try:
     sys._getframe()
 except (AttributeError, NotImplementedError):
     # Not all implementations support _getframe; in particular,
-    # IronPython does not support it by default.
-    print('*** warning: no frame support; globbing dir not available ***')
+    # IronPython on some platforms may not support it by default.
+    print('*** warning: no frame support; enhanced dir not available ***')
 else:
     try:
         from enhanced_dir import dir
     except ImportError:
-        print('*** warning: globbing dir not available ***')
+        print('*** warning: enhanced dir not available ***')
 
 
 # === Simple benchmarking ===
@@ -123,36 +124,6 @@ def _set_tb_handler():
     sys.excepthook = handler
 
 _set_tb_handler()
-
-
-# === Add a new error handler for encoding ===
-
-import codecs
-
-# This is only needed for Python 2.x compatiblity.
-try:
-    _unicode = unicode
-except NameError:
-    _unicode = str
-
-def namereplace_errors(exc, _unicode=_unicode):
-    c = exc.object[exc.start]
-    try:
-        name = unicodedata.name(c)
-    except (KeyError, ValueError):
-        n = ord(c)
-        if n <= 0xFFFF:
-            replace = "\\u%04x"
-        else:
-            assert n <= 0x10FFFF
-            replace = "\\U%08x"
-        replace = replace % n
-    else:
-        replace = "\\N{%s}" % name
-    return _unicode(replace), exc.start + 1
-
-codecs.register_error('namereplace', namereplace_errors)
-del codecs, _unicode
 
 
 print("=== startup script executed ===")
