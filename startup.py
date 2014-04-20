@@ -90,22 +90,14 @@ except ImportError:
 
 # === Command line completion and history ===
 try:
-    import history
+    from tabhistory import completer, history
 except ImportError:
-    print('*** warning: command line history not available ***')
+    print('*** warning: tab completion and command line history '
+          ' not available ***')
 else:
-    history = history.History()
-
-try:
-    import completer
-except ImportError:
-    print('*** warning: command line completion not available ***')
-else:
-    completer = completer.Completer(
-                    bindings=(r'"\C-xo": overwrite-mode',
-                              r'"\C-xd": dump-functions',
-                              )
-                            )
+    completer.bind(r'"\C-xo": overwrite-mode',
+                   r'"\C-xd": dump-functions',
+                   )
 
 
 # === Enable and disable comprehensive tracebacks ===
