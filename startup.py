@@ -92,7 +92,7 @@ except ImportError:
 try:
     from tabhistory import completer, history
 except ImportError:
-    print('*** warning: tab completion and command line history '
+    print('*** warning: tab completion and command line history'
           ' not available ***')
 else:
     completer.bind(r'"\C-xo": overwrite-mode',
