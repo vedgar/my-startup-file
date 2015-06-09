@@ -1,6 +1,18 @@
+# collections.namedtuple, backported to Python 2.4, with a twist.
+#
+# This should be tested against Python 2.4 through 2.7, but is not expected
+# to work in Python 3.
+
+
 from operator import itemgetter as _itemgetter
 from keyword import iskeyword as _iskeyword
 import sys as _sys
+
+try:
+    all, any
+except NameError:
+    # Python 2.4
+    from backports import all, any
 
 
 def _check_name(name):
@@ -77,6 +89,11 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
 
     # === Dynamically construct the class ===
 
+    # Unlike Raymond Hettinger's original recipe found at
+    # http://code.activestate.com/recipes/500261-named-tuples/
+    # we use a regular nested class. The only method which needs to be
+    # generated dynamically is __new__.
+
     numfields = len(field_names)
     reprtxt = ', '.join('%s=%%r' % name for name in field_names)
     argtxt = ', '.join(field_names)
@@ -134,10 +151,9 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
     # with a field of that same name.
     ns = {'_new': tuple.__new__}
     template = """def __new__(_cls, %(argtxt)s):
-        return _new(_cls, (%(argtxt)s))
-    """ % locals()
+        return _new(_cls, (%(argtxt)s))""" % locals()
     if verbose:
-        print(template)
+        print template
     exec template in ns, ns
     Inner.__new__ = staticmethod(ns['__new__'])  # NOT classmethod!
 
@@ -166,7 +182,7 @@ if __name__ == '__main__':
             return 'Point: x=%6.3f y=%6.3f hypot=%6.3f' % (self.x, self.y, self.hypot)
 
     for p in Point(3,4), Point(14,5), Point(9./7,6):
-        print p
+        print (p)
 
     class Point(namedtuple('Point', 'x y')):
         'Point class with optimized _make() and _replace() without error-checking'
