@@ -52,6 +52,12 @@ try:
 except NameError:
     from imp import reload
 
+# And reduce.
+try:
+    reduce
+except NameError:
+    from functools import reduce
+
 # And cmp.
 try:
     cmp
