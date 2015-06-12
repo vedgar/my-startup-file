@@ -163,12 +163,14 @@ def getsizeof(obj, default=None):
     return size
 
 
-def _get_bytes_per_char(obj):
-    # Helper function determining the number of bytes per character in
-    # text (Unicode) strings.
+def _get_bytes_per_char(text):
+    # Helper function determining the number of bytes per character
+    # in text (Unicode) strings.
     if sys.version >= '3.3':
         # Flexible text representation.
-        maxchr = ord(max(c for c in obj))
+        if not text:
+            return 1
+        maxchr = ord(max(text))
         if maxchr <= 0xFF:
             return 1
         elif maxchr <= 0xFFFF:
