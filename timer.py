@@ -3,7 +3,14 @@ import sys
 try:
     from functools import wraps
 except ImportError:
-    from backports import wraps
+    try:
+        # Try using my personal backports?
+        from backports import wraps
+    except ImportError:
+        # Just give up.
+        def wraps(func):
+            return lambda f: f
+
 
 try:
     next
@@ -60,7 +67,7 @@ class Stopwatch(object):
     def __init__(self, timer=None, verbose=True, cutoff=0.001):
         """Initialise the Stopwatch instance.
 
-        All arguments are optional, and a exposed as public attributes
+        All arguments are optional, and are exposed as public attributes
         with the same name:
 
             timer:
