@@ -1,4 +1,5 @@
 import sys
+import gc
 
 try:
     from functools import wraps
@@ -19,6 +20,17 @@ except NameError:
     def next(it):
         return it.next()
 
+
+def _set_gc_state(state):
+    """Set the garbage collector state.
+
+    Passing None means to take no action, passing a true value enables
+    the GC, and any false value other than None disables it.
+    """
+    if state:
+        gc.enable()
+    elif state is not None:
+        gc.disable()
 
 
 class Stopwatch(object):
@@ -64,7 +76,7 @@ class Stopwatch(object):
         total           The total accumulated time.
 
     """
-    def __init__(self, timer=None, verbose=True, cutoff=0.001):
+    def __init__(self, timer=None, verbose=True, cutoff=0.001, set_gc=None):
         """Initialise the Stopwatch instance.
 
         All arguments are optional, and are exposed as public attributes
@@ -86,18 +98,32 @@ class Stopwatch(object):
                 the amount of time in seconds below which a warning is
                 displayed. Defaults to 0.001 second.
 
+            set_gc:
+                If None (the default), no special action is taken.
+                Otherwise, if a true value is given, the garbage
+                collector is enabled before running the with block. If
+                a false value (other than None) is given, the garbage
+                collector is disabled before running. In either case,
+                the state of the garbage collector is restored after
+                the with block exits.
+
         """
         if timer is None:
             from timeit import default_timer as timer
         self.timer = timer
         self.verbose = verbose
         self.cutoff = cutoff
+        self.set_gc = set_gc
         self.reset()
 
     def reset(self):
         """Reset all the collected timer results."""
         try:
             del self._start
+        except AttributeError:
+            pass
+        try:
+            del self._gcstate
         except AttributeError:
             pass
         self._running = False
@@ -113,6 +139,8 @@ class Stopwatch(object):
         if not self._running:
             self._running = True
             self._count += 1
+            self._gcstate = gc.isenabled()
+            _set_gc_state(self.set_gc)
             self._start = self.timer()
 
     def stop(self):
@@ -124,10 +152,12 @@ class Stopwatch(object):
         methods if appropriate.
         """
         if self._running:
-            self._running = False
             self._elapsed = self.timer() - self._start
             self._total += self._elapsed
+            _set_gc_state(self._gcstate)
+            self._running = False
             del self._start
+            del self._gcstate
             if self.verbose:
                 if self.cutoff is not None and self.elapsed < self.cutoff:
                     self.warn()
