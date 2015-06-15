@@ -29,9 +29,8 @@ replacement for the original. The original is accessible as `builtin_dir`.
 import sys
 from fnmatch import fnmatchcase
 
-builtin_dir = dir
-_sentinel = object()
-
+MISSING = object()
+original_dir = dir  # In case this gets monkey-patched.
 
 try:
     any
@@ -47,46 +46,91 @@ try:
 except AttributeError:
     casefold = str.lower
 
-# Wrapper functions to handle case-insensitive matching and
-# reversing the sense of the match.
 
-def wrap_reverse(func):
-    def inner(arg):
-        return not func(arg)
-    return inner
+def _pop(t, d=MISSING):
+    """Pop the first item from sequence t.
 
-def wrap_case_insensitive(func):
-    def inner(arg):
-        return func(casefold(arg))
-    return inner
+    Returns both the first item and the tail of the sequence:
 
-def build_matcher(pattern):
-    """Return a match function from the given pattern."""
-    reverse = case_sensitive = False
-    if pattern.startswith('!'):
-        reverse = True
-        pattern = pattern[1:]
-    if pattern.endswith('='):
-        case_sensitive = True
-        pattern = pattern[:-1]
-    if not case_sensitive:
-        pattern = casefold(pattern)
-    if any(c in pattern for c in '*?['):
-        # Metacharacter searches use the fnmatchcase functions.
-        # Don't use fnmatch since that is platform-dependent.
-        def matcher(name):
-            return fnmatchcase(name, pattern)
+    >>> t = (2, 3, 4, 5)
+    >>> item, t = pop(t)
+    >>> print(item); print(t)
+    2
+    (3, 4, 5)
+
+    If t is empty, raises IndexError unless the option second
+    argument is given, in which case that it returned in place
+    of the non-existent popped value.
+    """
+    if t:
+        return t[0], t[1:]
+    elif d is not MISSING:
+        return d, ()
     else:
-        def matcher(name):
-            return pattern in name
-    if case_sensitive:
-        matcher = wrap_case_insensitive(matcher)
-    if reverse:
-        matcher = wrap_reverse(matcher)
-    return matcher
+        raise IndexError('pop from empty object')
 
 
-def _enhanced_dir(obj, glob, include_metaclass):
+def _getattrnames(obj, meta):
+    if obj is MISSING:
+        # Get the locals of the caller's caller. This may not work 
+        # under some implementations such as Jython.
+        names = sys._getframe(2).f_locals
+        # Note that calling builtin dir() won't work, because the locals it
+        # sees will be those of *this* function, not the caller.
+    else:
+        names = original_dir(obj)
+        if meta:
+            if isinstance(obj, type):
+                metaclass = type(obj)
+            else:
+                metaclass = type(type(obj))
+            names.extend(dir(metaclass))
+    return sorted(set(names))
+
+
+def _filter(names, glob):
+    # Filter names according to the glob.
+    assert isinstance(glob, str)
+    if not glob:
+        return names
+    invert = glob.startswith('!')
+    if invert:
+        glob = glob[1:]
+    case = glob.endswith('=')
+    if case:
+        glob = glob[:-1]
+    match = _matcher(glob, invert)
+    if case:
+        names = [nm for nm in names if match(nm)]
+    else:
+        glob = casefold(glob)
+        names = [nm for nm in names if match(casefold(nm))]
+    return names
+
+
+def _matcher(glob, invert):
+    if any(c in glob for c in '*?['):
+        # Searches with metacharacters use fnmatchcase.
+        # Don't use fnmatch since that is platform-dependent.
+        def match(name):
+            return fnmatchcase(name, glob)
+    else:
+        def match(name):
+            return glob in name
+    if invert:
+        orig = match
+        def match(name):
+            return not orig(name)
+    return match
+
+def _filter_dunders(names, dunder):
+    if dunder:
+        return names
+    D = '__'
+    return [nm for nm in names if not (nm.startswith(D) and nm.endswith(D))]
+
+
+def edir(*args, **kwargs):
     """dir([object [, glob], include_metaclass=False]) -> list of strings
 
     If called without any arguments, return the names in the current scope.
@@ -123,43 +167,29 @@ def _enhanced_dir(obj, glob, include_metaclass):
           match, end the glob with a '=' suffix.
 
     """
-    if obj is _sentinel:
-        # Get the locals of the caller. This may not work under some
-        # implementations such as Jython.
-        return sorted(sys._getframe(1).f_locals)
-        # Note that calling builtin dir() won't work, because the locals it
-        # sees will be those of *this* function, not the caller.
-    else:
-        names = builtin_dir(obj)
-        if include_metaclass:
-            if isinstance(obj, type):
-                meta = type(obj)
-            else:
-                meta = type(type(obj))
-            names = sorted(set(names + builtin_dir(meta)))
-    if glob is None or glob == '':
-        # No filtering needed.
-        return names
-    else:
-        matcher = build_matcher(glob)
-        return [name for name in names if matcher(name)]
+    obj = glob = MISSING
+    if args:
+        obj, args = _pop(args)
+    if args:
+        glob, args = _pop(args, None)
+    if args:
+        raise TypeError('too many arguments')
+    if glob is MISSING:
+        glob = kwargs.pop('glob', '')
+    meta = kwargs.pop('meta', False)
+    dunders = kwargs.pop('dunders', False)
+    if kwargs:
+        raise TypeError('unexpected keyword argument')
+    names = _getattrnames(obj, meta)
+    names = _filter(names, glob)
+    names = _filter_dunders(names, dunders)
+    return names
 
 
-try:
-    # In Python 3, we have syntax for keyword-only arguments. But since it
-    # fails under Python 2, we use exec to compile it.
-    exec("""\
-def dir(obj=_sentinel, glob=None, *, include_metaclass=False):
-    return _enhanced_dir(obj, glob, include_metaclass)
-""")
-except SyntaxError:
-    # Python 2. Fall back to the old way of keyword-only arguments.
-    def dir(obj=_sentinel, glob=None, **kwargs):
-        include_metaclass = kwargs.pop('include_metaclass', False)
-        if kwargs:
-            raise TypeError('too many keyword arguments')
-        return _enhanced_dir(obj, glob, include_metaclass)
-
-dir.__doc__ = _enhanced_dir.__doc__
+def ddir(*args, **kwargs):
+    """dunder dir - like enhanced dir, except dunder names are shown by default."""
+    if 'dunders' not in kwargs and len(args) < 2:
+        kwargs['dunders'] = True
+    return edir(*args, **kwargs)
 
 
