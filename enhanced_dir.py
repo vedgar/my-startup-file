@@ -106,14 +106,15 @@ def _filter(names, glob):
     invert = glob.startswith('!')
     if invert:
         glob = glob[1:]
-    case = glob.endswith('=')
-    if case:
+    case_sensitive = glob.endswith('=')
+    if case_sensitive:
         glob = glob[:-1]
-    match = _matcher(glob, invert)
-    if case:
-        names = [nm for nm in names if match(nm)]
     else:
         glob = casefold(glob)
+    match = _matcher(glob, invert)
+    if case_sensitive:
+        names = [nm for nm in names if match(nm)]
+    else:
         names = [nm for nm in names if match(casefold(nm))]
     return names
 
