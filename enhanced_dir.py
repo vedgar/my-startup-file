@@ -1,27 +1,39 @@
-"""Enhancements to the built-in dir function.
+"""Enhanced dir function.
 
-Enhanced dir()-like function.
+``edir`` is an enhanced replacement for the builtin ``dir`` with the
+following features:
 
-    - Search metaclass as well as instance and class.
-    - Support for matching globs to dir.
+- By default, matches the behaviour of the builtin ``dir``.
+- Optionally search the object's metaclass.
+- Filter names which match a glob:
 
-        >>> class K: pass
-        >>> k = K()
-        >>> k.aa = 1; k.ba = 2; k.bb = 3
-        >>> dir(k)
-        ['__doc__', '__module__', 'aa', 'ba', 'bb']
-        >>> dir(k, 'b*')
-        ['ba', 'bb']
+    >>> class K: pass
+    >>> k = K()
+    >>> k.aa = 1; k.ba = 2; k.bb = 3
+    >>> edir(k)
+    ['__doc__', '__module__', 'aa', 'ba', 'bb']
+    >>> edir(k, 'b*')
+    ['ba', 'bb']
 
-      If the glob doesn't include any of the metacharacters '*?[', it is
-      treated as a regular substring match:
+- Substring matching if the glob lacks metacharacters:
 
-        >>> dir(k, 'du')
-        ['__module__']
+    >>> edir(k, 'du')
+    ['__module__']
+
+- Optionally filter out dunder methods.
+- The dunder filter is configurable, by setting a flag on the
+  ``edir`` object you can choose between "default on" or
+  "default off".
+
+    >>> edir(k, dunders=False)
+    ['aa', 'ba', 'bb']
+    >>> edir.dunders = False
+    >>> edir(k)
+    ['aa', 'ba', 'bb']
 
 
-The `dir` function is designed to be monkey-patched into built-ins as a
-replacement for the original. The original is accessible as `builtin_dir`.
+The ``edir`` function can be monkey-patched into built-ins as a
+replacement for the original if required.
 """
 
 # Keep this module compatible with Python 2.4 and better.
@@ -71,20 +83,18 @@ def _pop(t, d=MISSING):
 
 
 def _getattrnames(obj, meta):
-    if obj is MISSING:
-        # Get the locals of the caller's caller. This may not work 
-        # under some implementations such as Jython.
-        names = sys._getframe(2).f_locals
-        # Note that calling builtin dir() won't work, because the locals it
-        # sees will be those of *this* function, not the caller.
-    else:
-        names = original_dir(obj)
-        if meta:
-            if isinstance(obj, type):
-                metaclass = type(obj)
-            else:
-                metaclass = type(type(obj))
-            names.extend(dir(metaclass))
+    """Return a list of attribute names of obj.
+
+    If meta is a true value, the object's metaclass attributes will
+    also be included.
+    """
+    names = original_dir(obj)
+    if meta:
+        if isinstance(obj, type):
+            metaclass = type(obj)
+        else:
+            metaclass = type(type(obj))
+        names.extend(dir(metaclass))
     return sorted(set(names))
 
 
@@ -123,15 +133,16 @@ def _matcher(glob, invert):
             return not orig(name)
     return match
 
-def _filter_dunders(names, dunder):
-    if dunder:
+
+def _filter_dunders(names, dunders):
+    if dunders:
         return names
     D = '__'
     return [nm for nm in names if not (nm.startswith(D) and nm.endswith(D))]
 
 
 def edir(*args, **kwargs):
-    """dir([object [, glob], include_metaclass=False]) -> list of strings
+    """edir([object [, glob] [, dunders=True] [, meta=False]]) -> list of strings
 
     If called without any arguments, return the names in the current scope.
     Otherwise return an alphabetized list of names comprising some of the
@@ -147,12 +158,13 @@ def edir(*args, **kwargs):
         - for any other object: its attributes, its class's attributes, and
           recursively the attributes of its class's base classes.
 
-    If keyword-only argument include_metaclass is a true value, attributes
-    reachable from the object's metaclass will also be include. By default,
+    If keyword-only argument dunders is a true value, attributes reachable
+    from the object's metaclass will also be included. By default,
     metaclass attributes are not included.
 
     If string argument `glob` is given, only attributes matching that string
-    will be returned. Globs support the following metacharacters:
+    will be returned. Matches are case-insensitive by default. Globs support
+    the following metacharacters:
 
         - Wildcards: '?' to match a single character, '*' to match
           zero or more characters.
@@ -163,8 +175,7 @@ def edir(*args, **kwargs):
         - Reverse matching: if the glob begins with '!', the sense of the
           match is reversed to "don't match".
 
-        - Matches are case-insensitive by default. For a case-sensitive
-          match, end the glob with a '=' suffix.
+        - For a case-sensitive match, end the glob with a '=' suffix.
 
     """
     obj = glob = MISSING
@@ -177,19 +188,26 @@ def edir(*args, **kwargs):
     if glob is MISSING:
         glob = kwargs.pop('glob', '')
     meta = kwargs.pop('meta', False)
-    dunders = kwargs.pop('dunders', False)
+    dunders = kwargs.pop('dunders', None)
+    if dunders is None:
+        # Get the default from a flag on the function. We use an attribute
+        # rather than setting a global variable as this is more convenient
+        # for interactive use.
+        dunders = edir.dunders
     if kwargs:
         raise TypeError('unexpected keyword argument')
-    names = _getattrnames(obj, meta)
+    if obj is MISSING:
+        # Get the locals of the caller's caller. This may not work 
+        # under some implementations such as Jython.
+        # Note that calling builtin dir() won't work, because the locals it
+        # sees will be those of *this* function, not the caller.
+        names = sys._getframe(1).f_locals
+    else:
+        names = _getattrnames(obj, meta)
     names = _filter(names, glob)
     names = _filter_dunders(names, dunders)
     return names
 
-
-def ddir(*args, **kwargs):
-    """dunder dir - like enhanced dir, except dunder names are shown by default."""
-    if 'dunders' not in kwargs and len(args) < 2:
-        kwargs['dunders'] = True
-    return edir(*args, **kwargs)
+edir.dunders = True  # By default, show dunders.
 
 

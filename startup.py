@@ -88,7 +88,9 @@ except (AttributeError, NotImplementedError):
     print('*** warning: no frame support; enhanced dir not available ***')
 else:
     try:
-        from enhanced_dir import dir
+        from enhanced_dir import edir
+        builtins.dir = edir
+        del edir
     except ImportError:
         print('*** warning: enhanced dir not available ***')
 
