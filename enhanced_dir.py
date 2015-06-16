@@ -201,7 +201,7 @@ def edir(*args, **kwargs):
         # under some implementations such as Jython.
         # Note that calling builtin dir() won't work, because the locals it
         # sees will be those of *this* function, not the caller.
-        names = sys._getframe(1).f_locals
+        names = sorted(sys._getframe(1).f_locals)
     else:
         names = _getattrnames(obj, meta)
     names = _filter(names, glob)
