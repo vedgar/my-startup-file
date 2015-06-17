@@ -120,13 +120,17 @@ def _filter(names, glob):
     assert isinstance(glob, str)
     if not glob:
         return names
-    invert = glob.startswith('!')
-    if invert:
+    invert = case_sensitive = False
+    if glob.startswith('!='):
+        invert = case_sensitive = True
+        glob = glob[2:]
+    elif glob.startswith('!'):
+        invert = True
         glob = glob[1:]
-    case_sensitive = glob.endswith('=')
-    if case_sensitive:
-        glob = glob[:-1]
-    else:
+    elif glob.startswith('='):
+        case_sensitive = True
+        glob = glob[1:]
+    if not case_sensitive:
         glob = casefold(glob)
     match = _matcher(glob, invert)
     if case_sensitive:
