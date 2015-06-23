@@ -76,6 +76,16 @@ except AttributeError:
 def _interactive():
     return hasattr(sys, 'ps1')
 
+
+def _ismagic(s):
+    return s.startswith('_')
+
+
+def _isdunder(s):
+    D = '__'
+    return s.startswith(D) and s.endswith(D)
+
+
 def _pop(t, d=MISSING):
     """Pop the first item from sequence t.
 
@@ -163,24 +173,31 @@ def _matcher(glob, invert):
     return match
 
 
-def _filter_dunders(names, dunders):
-    """Keep dunders, or filter them out.
+def _filter_magic(names, omit):
+    """Keep or omit magic (private and dunder) names.
 
-    >>> L = ['a', '__b__', 'c', '__d__']
-    >>> _filter_dunders(L, True)
-    ['a', '__b__', 'c', '__d__']
-    >>> _filter_dunders(L, False)
-    ['a', 'c']
+    >>> L = ['a', '_b', 'c_', '__d__']
+    >>> _filter_magic(L, 0)
+    ['a', '_b', 'c_', '__d__']
+    >>> _filter_magic(L, 1)
+    ['a', '_b', 'c_']
+    >>> _filter_magic(L, 2)
+    ['a', 'c_']
 
     """
-    if dunders:
+    if omit not in (0, 1, 2):
+        raise ValueError('omit must be one of 0, 1 or 2')
+    if omit == 2:
+        return [nm for nm in names if not _ismagic(nm)]
+    elif omit == 1:
+        return [nm for nm in names if not _isdunder(nm)]
+    else:
+        assert omit == 0
         return names
-    D = '__'
-    return [nm for nm in names if not (nm.startswith(D) and nm.endswith(D))]
 
 
 def edir(*args, **kwargs):
-    """edir([object [, glob] [, dunders=True] [, meta=False]])
+    """edir([object [, glob] [, omit=2] [, meta=False]])
 
     Enhanced version of the ``dir`` builtin which takes four optional
     arguments:
@@ -191,16 +208,23 @@ def edir(*args, **kwargs):
         glob        Return names matching this glob or substring.
                     (Positional or keyword.)
 
-        dunders     If a true value, include double-leading-and-trailing
-                    underscore names like __str__ and similar.
-
-                    If a false value, do not include such dunder names.
-
-                    If not supplied, the default value is True when
-                    running non-interactively. When running in the
-                    interactive interpreter, the default is given by
-                    ``edir.dunders`` if it exists, or True.
+        omit        Omit magic (private and dunder) names.
                     (Keyword only.)
+
+                    With ``omit=0``, no magic names are omitted. For
+                    compatibility with the built-in ``dir``, this is
+                    the default. In interactive mode, that default can
+                    be customised. (See below.)
+
+                    With ``omit=1``, dunder names (e.g. "__str__") will
+                    be omitted. With ``omit=2``, all names beginning
+                    with one or more underscores (e.g. "_private") will
+                    be omitted.
+
+                    If not supplied, the default value for ``omit`` is
+                    0. Only when Python is running in the interactive
+                    interpreter, if the ``edir.omit`` attribute exists,
+                    it is taken as the default.
 
         meta        If a true value, include attributes of the object's
                     metaclass, otherwise, don't (the default).
@@ -262,8 +286,8 @@ def edir(*args, **kwargs):
     if glob is MISSING:
         glob = kwargs.pop('glob', '')
     meta = kwargs.pop('meta', False)
-    dunders = kwargs.pop('dunders', None)
-    if dunders is None:
+    omit = kwargs.pop('omit', None)
+    if omit is None:
         # Credit, or blame, for this to Cameron Simpson, who makes a
         # good(?) case that having a configurable default is harmful
         # when running non-interactively.
@@ -271,9 +295,9 @@ def edir(*args, **kwargs):
             # Get the default from a flag on the function. We use an
             # attribute rather than setting a global variable for two
             # reasons: encapsulation, and convenience.
-            dunders = getattr(edir, 'dunders', True)
+            omit = getattr(edir, 'omit', 0)
         else:
-            dunders = True
+            omit = 0
     if kwargs:
         raise TypeError('unexpected keyword argument')
     if obj is MISSING:
@@ -285,6 +309,6 @@ def edir(*args, **kwargs):
     else:
         names = _getattrnames(obj, meta)
     names = _filter(names, glob)
-    names = _filter_dunders(names, dunders)
+    names = _filter_magic(names, omit)
     return names
 
