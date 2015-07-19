@@ -4,6 +4,8 @@ try:
 except ImportError:
     from backports.nt import namedtuple
 
+from operator import attrgetter
+
 
 try:
     unichr
@@ -17,7 +19,7 @@ if __debug__:
     def _code(num):
         if 0 <= num <= 31:
             return '^%c' % (ord('@') + num)
-        elif 128 <= self.num <= 159:
+        elif 128 <= num <= 159:
             return 'ESC-%c' % (ord('@') + num - 128)
         elif num == 127:
             return '^?'
@@ -152,6 +154,32 @@ if __debug__:
     del C, cc, tmp
 
 
+def lookup(obj):
+    if isinstance(obj, int):
+        f = attrgetter('ordinal')
+    elif isinstance(obj, str):
+        if obj == '':
+            return SP
+        obj = obj.upper()
+        if obj.startswith('^') or obj.startswith('ESC'):
+            f = attrgetter('code')
+        else:
+            f = attrgetter('acronym')
+    else:
+        raise TypeError('expected int or str, not %s' % type(obj).__name__)
+    for C in (C0, C1):
+        for c in C.values():
+            if f(c) == obj:
+                return c
+    raise LookupError
+
+
+__all__ = ['lookup', 'C0', 'C1']
+__all__.extend(C0.keys())
+__all__.extend(C1.keys())
+
+
+assert 'lookup' not in C0 and 'lookup' not in C1
 globals().update(C0)
 globals().update(C1)
 
