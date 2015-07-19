@@ -21,9 +21,10 @@ except ImportError:
 
 
 # Change the main prompt. Consider using '≻≻≻ '?
-if sys.version_info[0] >= 3 and os.name == 'posix':
-    # Make the main prompt bold in Python 3. This probably won't
-    # work on Windows, put it should(?) work on any POSIX system.
+# This is non-portable and may not work everywhere.
+if (sys.version_info[0] >= 3 and os.name == 'posix'
+    and os.environ['TERM'] in ['xterm', 'vt100']):
+    # Make the main prompt bold in Python 3.
     sys.ps1 = '\001\x1b[1m\002py> \001\x1b[0m\002'
 else:
     sys.ps1 = 'py> '
