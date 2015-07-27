@@ -80,6 +80,15 @@ try:
 except AttributeError:
     math.tau = 2*math.pi  # τ = 2π
 
+
+# === Unicode tools ===
+
+try:
+    import unicodelib
+except:
+    print('*** warning: unicodelib not available ***')
+
+
 # === Add enhancements to dir() ===
 try:
     sys._getframe()
